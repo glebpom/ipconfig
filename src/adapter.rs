@@ -15,7 +15,7 @@ use bindings::*;
 #[derive(Debug)]
 pub struct Adapter {
     adapter_name: String,
-    ip_addresses: Vec<IpAddr>,
+    ip_addresses: Vec<(IpAddr, u8)>, //Ip address and a prefix
     dns_servers: Vec<IpAddr>,
     description: String,
     friendly_name: String,
@@ -28,7 +28,7 @@ impl Adapter {
         &self.adapter_name
     }
     /// Get the adapter's ip addresses (unicast ip addresses)
-    pub fn ip_addresses(&self) -> &Vec<IpAddr> {
+    pub fn ip_addresses(&self) -> &Vec<(IpAddr, u8)> {
         &self.ip_addresses
     }
     /// Get the adapter's dns servers (the preferred dns server is first)
@@ -125,13 +125,13 @@ unsafe fn get_dns_servers(mut dns_server_ptr: PIP_ADAPTER_DNS_SERVER_ADDRESS_XP)
     Ok(dns_servers)
 }
 
-unsafe fn get_unicast_addresses(mut unicast_addresses_ptr: PIP_ADAPTER_UNICAST_ADDRESS_LH) -> Result<Vec<IpAddr>> {
+unsafe fn get_unicast_addresses(mut unicast_addresses_ptr: PIP_ADAPTER_UNICAST_ADDRESS_LH) -> Result<Vec<(IpAddr, u8)>> {
     let mut unicast_addresses = vec![];
 
     while unicast_addresses_ptr != std::ptr::null_mut() {
         let unicast_address = &*unicast_addresses_ptr;
         let ipaddr = socket_address_to_ipaddr(&unicast_address.Address);
-        unicast_addresses.push(ipaddr);
+        unicast_addresses.push((ipaddr, unicast_address.OnLinkPrefixLength));
 
         unicast_addresses_ptr = unicast_address.Next;
     }
