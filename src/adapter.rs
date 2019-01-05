@@ -63,10 +63,18 @@ pub fn get_adapters() -> Result<Vec<Adapter>> {
 
         let mut adapters_addresses_buffer: Vec<u8> = vec![0; buf_len as usize];
         let mut adapter_addresses_ptr: PIP_ADAPTER_ADDRESSES = std::mem::transmute(adapters_addresses_buffer.as_mut_ptr());
-        let result = GetAdaptersAddresses(AF_UNSPEC as u32, 0, std::ptr::null_mut(), adapter_addresses_ptr, &mut buf_len as *mut ULONG);
 
-        if result != ERROR_SUCCESS {
-            bail!(ErrorKind::Os(result));
+        loop {
+            let result = GetAdaptersAddresses(AF_UNSPEC as u32, 0, std::ptr::null_mut(), adapter_addresses_ptr, &mut buf_len as *mut ULONG);
+
+            if result == ERROR_BUFFER_OVERFLOW {
+                adapters_addresses_buffer.resize(buf_len as usize, 0);
+            } else if result == ERROR_SUCCESS {
+                adapters_addresses_buffer.truncate(buf_len as usize);
+                break;
+            } else {
+                bail!(ErrorKind::Os(result));
+            }
         }
 
         let mut adapters = vec![];
